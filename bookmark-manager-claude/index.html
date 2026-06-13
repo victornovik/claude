@@ -177,8 +177,42 @@
     .bookmarks-list {
       max-width: 860px;
       margin: 0 auto;
-      display: grid;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .category-group { display: flex; flex-direction: column; gap: 8px; }
+
+    .category-group-header {
+      display: flex;
+      align-items: center;
       gap: 10px;
+      padding: 0 2px;
+    }
+
+    .category-group-header h3 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--text-muted);
+    }
+
+    .category-group-header .group-count {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--accent);
+      background: var(--accent-dim);
+      padding: 1px 7px;
+      border-radius: 20px;
+    }
+
+    .category-group-header::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
     }
 
     .bookmark-item {
@@ -251,18 +285,7 @@
 
     .bookmark-url a:hover { color: var(--accent); }
 
-    .category-tag {
-      font-size: 0.72rem;
-      font-weight: 600;
-      padding: 3px 9px;
-      border-radius: 20px;
-      background: var(--accent-dim);
-      color: var(--accent);
-      white-space: nowrap;
-      flex-shrink: 0;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
+    .category-tag { display: none; }
 
     .btn-delete {
       background: transparent;
@@ -320,7 +343,6 @@
     @media (max-width: 560px) {
       .form-grid { grid-template-columns: 1fr; }
       .form-group.full { grid-column: 1; }
-      .category-tag { display: none; }
     }
   </style>
 </head>
@@ -473,6 +495,27 @@
     });
   }
 
+  function bookmarkHTML(b) {
+    const fav = faviconUrl(b.url);
+    const displayUrl = b.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    return `
+      <div class="favicon">
+        ${fav
+          ? `<img src="${fav}" alt="" onerror="this.parentElement.innerHTML='<span class=favicon-fallback>🔖</span>'" />`
+          : '<span class="favicon-fallback">🔖</span>'}
+      </div>
+      <div class="bookmark-info">
+        <div class="bookmark-title">${escHtml(b.title)}</div>
+        <div class="bookmark-url"><a href="${escHtml(b.url)}" target="_blank" rel="noopener noreferrer">${escHtml(displayUrl)}</a></div>
+      </div>
+      <button class="btn-delete" title="Delete bookmark" data-id="${b.id}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        </svg>
+      </button>
+    `;
+  }
+
   function render() {
     const list = document.getElementById('bookmarks-list');
     const empty = document.getElementById('empty-state');
@@ -497,32 +540,36 @@
     empty.style.display = 'none';
     visCount.textContent = items.length !== n ? `${items.length} of ${n}` : '';
 
+    // Group by category (alphabetical)
+    const groups = {};
     items.forEach(b => {
-      const div = document.createElement('div');
-      div.className = 'bookmark-item';
-      div.dataset.id = b.id;
+      if (!groups[b.category]) groups[b.category] = [];
+      groups[b.category].push(b);
+    });
 
-      const fav = faviconUrl(b.url);
-      const displayUrl = b.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    Object.keys(groups).sort().forEach(cat => {
+      const groupItems = groups[cat];
 
-      div.innerHTML = `
-        <div class="favicon">
-          ${fav
-            ? `<img src="${fav}" alt="" onerror="this.parentElement.innerHTML='<span class=favicon-fallback>🔖</span>'" />`
-            : '<span class="favicon-fallback">🔖</span>'}
-        </div>
-        <div class="bookmark-info">
-          <div class="bookmark-title">${escHtml(b.title)}</div>
-          <div class="bookmark-url"><a href="${escHtml(b.url)}" target="_blank" rel="noopener noreferrer">${escHtml(displayUrl)}</a></div>
-        </div>
-        <span class="category-tag">${escHtml(b.category)}</span>
-        <button class="btn-delete" title="Delete bookmark" data-id="${b.id}">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-          </svg>
-        </button>
+      const section = document.createElement('div');
+      section.className = 'category-group';
+
+      const header = document.createElement('div');
+      header.className = 'category-group-header';
+      header.innerHTML = `
+        <h3>${escHtml(cat)}</h3>
+        <span class="group-count">${groupItems.length}</span>
       `;
-      list.appendChild(div);
+      section.appendChild(header);
+
+      groupItems.forEach(b => {
+        const div = document.createElement('div');
+        div.className = 'bookmark-item';
+        div.dataset.id = b.id;
+        div.innerHTML = bookmarkHTML(b);
+        section.appendChild(div);
+      });
+
+      list.appendChild(section);
     });
   }
 
