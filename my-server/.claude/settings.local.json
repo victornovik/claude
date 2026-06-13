@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Path \"D:\\\\dev\\\\src\\\\node\\\\my-server\" -Recurse | Where-Object { $_.FullName -notmatch \"node_modules\" } | Select-Object -ExpandProperty FullName)",
+      "Bash(start *)",
+      "PowerShell(Invoke-Item *)"
+    ]
+  }
+}
