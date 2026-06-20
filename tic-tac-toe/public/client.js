@@ -1,38 +1,37 @@
 const socket = io();
 
 const WINNING_LINES = [
-  [0, 1, 2],
-  [3, 4, 5],
-  [6, 7, 8],
-  [0, 3, 6],
-  [1, 4, 7],
-  [2, 5, 8],
-  [0, 4, 8],
-  [2, 4, 6],
+  [0, 1, 2], [3, 4, 5], [6, 7, 8],
+  [0, 3, 6], [1, 4, 7], [2, 5, 8],
+  [0, 4, 8], [2, 4, 6],
 ];
 
-const findGameBtn = document.getElementById("find-game-btn");
+const findGameBtn  = document.getElementById("find-game-btn");
 const playAgainBtn = document.getElementById("play-again-btn");
-const statusEl = document.getElementById("status");
-const cells = document.querySelectorAll(".cell");
+const statusEl     = document.getElementById("status");
+const cells        = document.querySelectorAll(".cell");
 
 let mySymbol = null;
-let roomId = null;
-let myTurn = false;
+let roomId   = null;
+let myTurn   = false;
 let gameOver = false;
 
 // ── Helpers ────────────────────────────────────────────────
 
 function setStatus(text) {
   statusEl.textContent = text;
+  statusEl.className = '';
 }
 
 function updateTurnStatus(activeSymbol) {
+  const colorClass = activeSymbol === 'X' ? 'turn-x' : 'turn-o';
   if (activeSymbol === mySymbol) {
-    setStatus(`Your turn (${mySymbol})`);
+    statusEl.textContent = `Your turn (${mySymbol})`;
+    statusEl.className = `${colorClass} my-turn`;
     myTurn = true;
   } else {
-    setStatus(`Opponent's turn`);
+    statusEl.textContent = "Opponent's turn";
+    statusEl.className = colorClass;
     myTurn = false;
   }
 }
@@ -50,25 +49,28 @@ function resetBoard() {
     cell.className = "cell";
   });
   mySymbol = null;
-  roomId = null;
-  myTurn = false;
+  roomId   = null;
+  myTurn   = false;
   gameOver = false;
   playAgainBtn.hidden = true;
   findGameBtn.disabled = false;
+  findGameBtn.classList.remove("searching");
+}
+
+function startSearch() {
+  findGameBtn.disabled = true;
+  findGameBtn.classList.add("searching");
+  setStatus("Searching for opponent...");
+  socket.emit("find-game");
 }
 
 // ── UI Events ──────────────────────────────────────────────
 
-findGameBtn.addEventListener("click", () => {
-  findGameBtn.disabled = true;
-  setStatus("Searching for opponent...");
-  socket.emit("find-game");
-});
+findGameBtn.addEventListener("click", startSearch);
 
 playAgainBtn.addEventListener("click", () => {
   resetBoard();
-  setStatus("Searching for opponent...");
-  socket.emit("find-game");
+  startSearch();
 });
 
 cells.forEach((cell) => {
@@ -81,7 +83,7 @@ cells.forEach((cell) => {
   });
 });
 
-// ── Socket Events: Receiving events FROM the server
+// ── Socket Events ──────────────────────────────────────────
 
 socket.on("waiting", () => {
   setStatus("Waiting for another player...");
@@ -89,8 +91,9 @@ socket.on("waiting", () => {
 
 socket.on("game-start", ({ symbol, roomId: id }) => {
   mySymbol = symbol;
-  roomId = id;
+  roomId   = id;
   gameOver = false;
+  findGameBtn.classList.remove("searching");
   updateTurnStatus("X"); // X always moves first
 });
 
@@ -100,13 +103,12 @@ socket.on("move-made", ({ index, symbol }) => {
 });
 
 socket.on("game-over", ({ winner, isDraw, board }) => {
-  // Sync the full board so the winning cell is always visible
   board.forEach((symbol, index) => {
     if (symbol) placeSymbol(index, symbol);
   });
 
   gameOver = true;
-  myTurn = false;
+  myTurn   = false;
 
   if (isDraw) {
     setStatus("It's a draw!");
@@ -114,8 +116,7 @@ socket.on("game-over", ({ winner, isDraw, board }) => {
     setStatus(winner === mySymbol ? "You won!" : "You lost.");
 
     const winLine = WINNING_LINES.find(
-      ([a, b, c]) =>
-        board[a] === winner && board[b] === winner && board[c] === winner,
+      ([a, b, c]) => board[a] === winner && board[b] === winner && board[c] === winner,
     );
     if (winLine) winLine.forEach((i) => cells[i].classList.add("winning"));
   }
@@ -125,7 +126,7 @@ socket.on("game-over", ({ winner, isDraw, board }) => {
 
 socket.on("opponent-left", () => {
   gameOver = true;
-  myTurn = false;
+  myTurn   = false;
   setStatus("Opponent disconnected.");
   playAgainBtn.hidden = false;
 });
