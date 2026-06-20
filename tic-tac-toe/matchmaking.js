@@ -6,6 +6,13 @@ const activeGames = new Map(); // roomId -> { game, players: { socketId -> symbo
 const socketRooms = new Map(); // socketId -> roomId
 
 function addToQueue(socket, io) {
+  if (
+    waitingQueue.some((s) => s.id === socket.id) ||
+    socketRooms.has(socket.id)
+  ) {
+    return;
+  }
+
   if (waitingQueue.length > 0) {
     const opponent = waitingQueue.shift();
     const roomId = randomUUID();
@@ -38,6 +45,13 @@ function removeFromQueue(socket) {
   if (index !== -1) waitingQueue.splice(index, 1);
 }
 
+function cleanupGame(roomId) {
+  const room = activeGames.get(roomId);
+  if (!room) return;
+  Object.keys(room.players).forEach((id) => socketRooms.delete(id));
+  activeGames.delete(roomId);
+}
+
 function handleDisconnect(socket, io) {
   removeFromQueue(socket);
 
@@ -61,6 +75,7 @@ function handleDisconnect(socket, io) {
 module.exports = {
   addToQueue,
   removeFromQueue,
+  cleanupGame,
   handleDisconnect,
   activeGames,
   socketRooms,

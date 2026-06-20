@@ -54,11 +54,13 @@ function resetBoard() {
   myTurn = false;
   gameOver = false;
   playAgainBtn.hidden = true;
+  findGameBtn.disabled = false;
 }
 
 // ── UI Events ──────────────────────────────────────────────
 
 findGameBtn.addEventListener("click", () => {
+  findGameBtn.disabled = true;
   setStatus("Searching for opponent...");
   socket.emit("find-game");
 });

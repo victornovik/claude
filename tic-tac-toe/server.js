@@ -3,6 +3,7 @@ const { createServer } = require('http');
 const { Server } = require('socket.io');
 const {
   addToQueue,
+  cleanupGame,
   handleDisconnect,
   activeGames,
   socketRooms,
@@ -45,6 +46,7 @@ io.on('connection', (socket) => {
         isDraw: result.isDraw,
         board: result.board,
       });
+      cleanupGame(roomId);
     }
   });
 
