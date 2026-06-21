@@ -1,0 +1,2 @@
+- [Project Architecture](project_architecture.md) — actual JS/Socket.IO stack, NOT the TS/React/DB stack CLAUDE.md claims; scope reviews accordingly
+- [Known Findings](project_known_findings.md) — 2026-06-21 review findings + the authoritative-server-state pattern to preserve
